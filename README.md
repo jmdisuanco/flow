@@ -182,14 +182,7 @@ Input ──┼─→ Fast Process (100ms) ──┼─→ First to Complete
 
 ## 💡 Usage Examples
 
-### Visual Flow Builder (React Flow Integration)
-```bash
-# Run the interactive React Flow example
-cd examples/vite-react-flow
-npm install && npm run dev
-```
 
-Visual interface with drag-and-drop flow building, real-time execution, and result visualization. Features linear, parallel, and branching flow examples with TypeScript support.
 
 ### Data Processing Pipeline
 ```javascript
