@@ -1,6 +1,6 @@
 {
   "name": "@jmdisuanco/flow",
-  "version": "1.3.6",
+  "version": "1.3.7",
   "description": "A lightweight, functional approach to async pipelines with built-in Zod validation",
   "main": "lib/index.js",
   "publishConfig": {
