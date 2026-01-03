@@ -4,7 +4,8 @@
   "description": "A lightweight, functional approach to async pipelines with built-in Zod validation",
   "main": "lib/index.js",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "module": "lib/index.esm.js",
   "types": "lib/index.d.ts",
