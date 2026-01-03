@@ -29,7 +29,7 @@
     "clean": "rm -rf lib coverage",
     "prepublishOnly": "npm run clean && npm run build && npm test",
     "docs": "typedoc --out docs src/index.ts",
-    "release": "bumpp && npm publish --registry=https://registry.npmjs.org/ && npm publish --registry=https://npm.pkg.github.com/"
+    "release": "bumpp && npm publish --@jmdisuanco:registry=https://registry.npmjs.org/ && npm publish --@jmdisuanco:registry=https://npm.pkg.github.com/"
   },
   "keywords": [
     "flow-based-programming",
