@@ -1,0 +1,14 @@
+node_modules/
+lib/
+coverage/
+*.log
+.DS_Store
+.env
+.vscode/
+.idea/
+*.tgz
+docs/
+.claude
+# Aware
+.aware/
+!.aware/config.json

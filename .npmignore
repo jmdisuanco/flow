@@ -1,0 +1,12 @@
+src/__tests__/
+coverage/
+.github/
+*.test.js
+*.spec.js
+.eslintrc.js
+jest.config.js
+rollup.config.js
+.babelrc
+docs/
+examples/
+.env

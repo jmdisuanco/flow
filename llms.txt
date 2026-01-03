@@ -1,0 +1,97 @@
+# @jmdisuanco/flow
+
+A lightweight, functional approach to Flow-Based Programming (FBP) focused on composable primitives: pipe, parallel, branch, race, and cycle patterns. **Now fully TypeScript-native**.
+
+## For LLM Developers
+
+This document is optimized for AI assistants working with the @jmdisuanco/flow codebase. It contains implementation details, coding patterns, and development workflows.
+
+## Project Overview
+
+@jmdisuanco/flow is a **TypeScript-first** library that provides functional primitives for building async pipelines. It focuses on functional composition (`pipe`) rather than complex graph structures.
+
+## Key Features
+
+- **Functional Purity**: Each node is a pure async function
+- **Primitives**: `pipe`, `parallel`, `branch`, `race`, `cycle`
+- **Async-First**: Built for modern async workflows
+- **Composable**: Primitives can be nested and combined
+- **TypeScript Support**: Full generic type safety
+- **Zod Validation**: Integral `validate` and `withSchema` helpers
+- **Error Handling**: Context-aware error propagation
+
+## Core Architecture
+
+### 1. Core Primitives (src/index.ts)
+- `pipe([fn1, fn2])` - Sequential function composition (formerly `flow`)
+- `parallel([fnA, fnB])` - Concurrent execution
+- `branch(cond, trueFn, falseFn)` - Conditional execution
+- `race([fn1, fn2])` - First-to-complete
+- `cycle(bodyFn, cond)` - Loop execution
+
+### 2. Validation System
+Built on Zod:
+- `ValidationError`: Captures flow context (`pipe[0]`, etc.)
+- `validate.input/output`: Helper factories
+- `withSchema`: Wrapper for validation
+
+## Usage Examples
+
+### Basic Pipe
+```typescript
+import { pipe } from '@jmdisuanco/flow';
+const p = pipe([
+  x => x * 2,
+  x => x + 1
+]);
+await p(5); // 11
+```
+
+### Parallel
+```typescript
+import { parallel } from '@jmdisuanco/flow';
+const p = parallel([
+  userId => getUser(userId),
+  userId => getPosts(userId)
+]);
+```
+
+## Project Structure
+
+```
+@jmdisuanco/flow/
+├── src/
+│   ├── index.ts           # Core primitives & implementations
+│   ├── index.d.ts         # Type definitions
+│   └── __tests__/         # Tests
+├── examples/
+│   └── basic-usage.js     # Usage examples
+├── lib/                   # Build artifacts
+├── rollup.config.js       # Build config
+└── package.json           # Config
+```
+
+## Development
+
+- `bun test`: Run tests
+- `npm run build`: Build (Rollup)
+- `npm run type-check`: TSC check
+
+## Dependencies
+- `zod`
+- Dev: `bun`, `typescript`, `rollup`, `jest`/`bun test`
+
+## Implementation Details
+
+- **Pipe**: Implemented as a reducer over an array of async functions.
+- **Error Context**: Errors are caught and decorated with `flowContext` to trace the path through the pipeline.
+- **No Classes**: The library uses a functional approach; no classes are exposed (previously had GraphRunner, now removed).
+
+## Naming Conventions
+- usage of `pipe` instead of `flow` to avoid confusion with the library name.
+- `fns` for function arrays.
+- `payload` for intermediate results.
+
+## Contributing
+- To add a new primitive, export it from `src/index.ts` and add tests.
+- Ensure strict type safety.
