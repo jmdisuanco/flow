@@ -42,13 +42,18 @@ yarn add @jmdisuanco/flow
 
 ### JavaScript
 ```javascript
-import { pipe, parallel, branch, race, cycle } from '@jmdisuanco/flow';
+import { pipe } from '@jmdisuanco/flow';
 
-// Sequence / Pipe
+// 💡 Pro Tip: Use named functions for better stack traces and readability
+const double = x => x * 2;
+const addTen = x => x + 10;
+const formatResult = x => ({ result: x, processed: true });
+
+// Compose your pipeline 
 const linearPipeline = pipe([
-  x => x * 2,
-  x => x + 10,
-  x => ({ result: x, processed: true })
+  double,
+  addTen,
+  formatResult
 ]);
 
 const result = await linearPipeline(5); // { result: 20, processed: true }
@@ -56,13 +61,17 @@ const result = await linearPipeline(5); // { result: 20, processed: true }
 
 ### TypeScript
 ```typescript
-import { pipe, parallel, z, ValidationOptions } from '@jmdisuanco/flow';
+import { pipe, z } from '@jmdisuanco/flow';
 
-// Type-safe pipe with validation
-const typedPipeline = pipe<number, { result: number; processed: boolean }>([
-  (x: number) => x * 2,
-  (x: number) => x + 10,
-  (x: number) => ({ result: x, processed: true })
+// Typed named functions
+const double = (x: number) => x * 2;
+const addTen = (x: number) => x + 10;
+const formatResult = (x: number) => ({ result: x, processed: true });
+
+const typedPipeline = pipe([
+  double,
+  addTen,
+  formatResult
 ], {
   input: z.number().positive(),
   output: z.object({
@@ -71,7 +80,7 @@ const typedPipeline = pipe<number, { result: number; processed: boolean }>([
   })
 });
 
-const result = await typedPipeline(5); // Fully typed result
+const result = await typedPipeline(5);
 ```
 
 ## 🔧 Core Primitives
@@ -471,28 +480,43 @@ describe('User Processing Flow', () => {
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)  
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-### Development Setup
-```bash
-git clone https://github.com/jmdisuanco/flow.git
-cd flow
-npm install
-npm test
-npm run type-check  # TypeScript type checking
-npm run build       # Builds JS and copies .d.ts files to lib/
-```
+### Development Workflow
+
+1.  **Fork** the repository and clone it locally.
+2.  **Install dependencies**:
+    ```bash
+    npm install
+    ```
+3.  **Create a feature branch**:
+    ```bash
+    git checkout -b feature/amazing-feature
+    ```
+4.  **Make changes**. Ensure code quality:
+    ```bash
+    npm run check   # Runs Biome linting and formatting
+    npm test        # Runs Jest tests
+    ```
+5.  **Commit changes** (Standard conventional commits recommended).
+6.  **Push** and open a **Pull Request**.
 
 ### Build Process
-The build process now includes TypeScript declaration files:
-- Compiles JavaScript with Rollup (CommonJS, ESM, UMD)
-- Copies TypeScript `.d.ts` files from `src/` to `lib/`
-- Generated `lib/` directory contains both JS and type definitions
-- Users get full TypeScript support when importing the package
+The project uses Rollup and TypeScript:
+- **`src/`**: TypeScript source code.
+- **`lib/`**: Generated build output (CJS, ESM, UMD + `.d.ts` types).
+- Run `npm run build` to compile locally.
+
+### 🚀 Releasing (Maintainers)
+To release a new version:
+```bash
+npm run release
+```
+This uses [bumpp](https://github.com/antfu/bumpp) to interactively:
+1.  Bump the version in `package.json`.
+2.  Generate a commit and git tag.
+3.  Push to remote.
+4.  (Afterward) Run `npm publish` to publish to npm.
 
 ## 📄 License
 

@@ -1,5 +1,4 @@
-const { commonSchemas } = require('../src/validation');
-const { pipe, parallel, z, validate } = require('../src/index');
+const { pipe, parallel, z, validate, commonSchemas } = require('..');
 
 async function basicExample() {
   console.log('=== Basic Flow Example ===');

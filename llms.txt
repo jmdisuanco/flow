@@ -1,97 +1,120 @@
 # @jmdisuanco/flow
 
-A lightweight, functional approach to Flow-Based Programming (FBP) focused on composable primitives: pipe, parallel, branch, race, and cycle patterns. **Now fully TypeScript-native**.
+A lightweight, functional approach to async pipelines with built-in Zod validation. **Fully TypeScript-native**.
 
 ## For LLM Developers
 
-This document is optimized for AI assistants working with the @jmdisuanco/flow codebase. It contains implementation details, coding patterns, and development workflows.
+This document is optimized for AI assistants working with the `@jmdisuanco/flow` codebase. It contains implementation details, coding patterns, and development workflows.
 
 ## Project Overview
 
-@jmdisuanco/flow is a **TypeScript-first** library that provides functional primitives for building async pipelines. It focuses on functional composition (`pipe`) rather than complex graph structures.
+`@jmdisuanco/flow` provides functional primitives for building async pipelines using a "pipe" pattern. It focuses on functional composition rather than class-based graphs.
 
-## Key Features
+## Core Primitives (`src/index.ts`)
 
-- **Functional Purity**: Each node is a pure async function
-- **Primitives**: `pipe`, `parallel`, `branch`, `race`, `cycle`
-- **Async-First**: Built for modern async workflows
-- **Composable**: Primitives can be nested and combined
-- **TypeScript Support**: Full generic type safety
-- **Zod Validation**: Integral `validate` and `withSchema` helpers
-- **Error Handling**: Context-aware error propagation
+### 1. `pipe(fns, validation?)`
+Sequential function composition. Executes functions in order, passing the output of one as input to the next.
+- **Signature**: `pipe<TInput, TOutput>(fns: AsyncFunction[], validation?: ValidationOptions): PipeFunction`
+- **Validation**: Supports input/output schemas via optional 2nd argument.
 
-## Core Architecture
+### 2. `parallel(fns, validation?)`
+Concurrent execution. Runs all functions in parallel with the same input. Returns an array of results.
+- **Signature**: `parallel<TInput, TOutput>(fns: AsyncFunction[], validation?: ValidationOptions): ParallelFunction`
+- **Validation**: Supports input/output schemas.
 
-### 1. Core Primitives (src/index.ts)
-- `pipe([fn1, fn2])` - Sequential function composition (formerly `flow`)
-- `parallel([fnA, fnB])` - Concurrent execution
-- `branch(cond, trueFn, falseFn)` - Conditional execution
-- `race([fn1, fn2])` - First-to-complete
-- `cycle(bodyFn, cond)` - Loop execution
+### 3. `branch(condition, trueFn, falseFn, validation?)`
+Conditional execution. Evaluates `condition(input)`; if true, runs `trueFn(input)`, else `falseFn(input)`.
+- **Signature**: `branch<TInput, TOutput>(condition, trueFn, falseFn, validation?: ValidationOptions): BranchFunction`
+- **Validation**: Supports input/output schemas.
 
-### 2. Validation System
-Built on Zod:
-- `ValidationError`: Captures flow context (`pipe[0]`, etc.)
-- `validate.input/output`: Helper factories
-- `withSchema`: Wrapper for validation
+### 4. `race(fns)`
+First-to-complete execution. Runs functions in parallel; returns the result of the first one to resolve.
+- **Signature**: `race<TInput, TOutput>(fns: AsyncFunction[]): RaceFunction`
+- **Note**: Does *not* accept a top-level validation argument. Wrap individual functions with `withSchema` if needed.
+
+### 5. `cycle(bodyFn, condition, maxIterations?)`
+Iterative execution (Loop). Runs `bodyFn(input)` repeatedly while `condition(currentResult)` is true.
+- **Signature**: `cycle<TInput>(bodyFn, condition, maxIterations?: number): CycleFunction`
+- **Note**: Does *not* accept a top-level validation argument. Use `withSchema` on `bodyFn`.
+
+## Validation System (`src/validation.ts`)
+
+Built on Zod.
+- **`ValidationOptions`**: `{ input?: ZodSchema, output?: ZodSchema, label?: string }`
+- **`validate`**: Helper object.
+  - `validate.input(schema, label?)`
+  - `validate.output(schema, label?)`
+- **`withSchema(fn, { input?, output? }, label?)`**: Higher-order function to add validation to ANY async function.
+
+## Coding Patterns
+
+### Preferred: Named Functions
+Use named functions instead of anonymous arrow functions in flow definitions. This improves stack trace readability and debugging, allowing you to identify exactly which function failed in a pipeline.
+
+#### Bad
+```typescript
+pipe([
+  x => x * 2,
+  x => x + 1
+])
+```
+
+#### Good
+```typescript
+const double = (x: number) => x * 2;
+const increment = (x: number) => x + 1;
+
+pipe([
+  double,
+  increment
+])
+```
 
 ## Usage Examples
 
-### Basic Pipe
+### Pipe with Validation
 ```typescript
-import { pipe } from '@jmdisuanco/flow';
-const p = pipe([
-  x => x * 2,
-  x => x + 1
-]);
-await p(5); // 11
+import { pipe, z } from '@jmdisuanco/flow';
+
+const pipeline = pipe([
+  async (x: number) => x * 2,
+  async (x: number) => x + 1
+], {
+  input: z.number(),
+  output: z.number(),
+  label: 'Calculation'
+});
 ```
 
-### Parallel
+### Complex Flow
 ```typescript
-import { parallel } from '@jmdisuanco/flow';
-const p = parallel([
-  userId => getUser(userId),
-  userId => getPosts(userId)
+import { pipe, parallel, branch } from '@jmdisuanco/flow';
+
+const workflow = pipe([
+  // Step 1: Fetch data in parallel
+  parallel([
+    getUser,
+    getPosts
+  ]),
+  // Step 2: Branch based on user type
+  branch(
+    ([user]) => user.isAdmin,
+    adminHandler,
+    userHandler
+  )
 ]);
 ```
 
 ## Project Structure
 
-```
-@jmdisuanco/flow/
-├── src/
-│   ├── index.ts           # Core primitives & implementations
-│   ├── index.d.ts         # Type definitions
-│   └── __tests__/         # Tests
-├── examples/
-│   └── basic-usage.js     # Usage examples
-├── lib/                   # Build artifacts
-├── rollup.config.js       # Build config
-└── package.json           # Config
-```
+- `src/index.ts`: Core primitives implementation.
+- `src/validation.ts`: Zod integration and error handling.
+- `src/__tests__/`: Unit and integration tests.
+- `lib/`: Generated build output (CJS, ESM, Types).
+- `examples/`: Usage demos.
 
 ## Development
 
-- `bun test`: Run tests
-- `npm run build`: Build (Rollup)
-- `npm run type-check`: TSC check
-
-## Dependencies
-- `zod`
-- Dev: `bun`, `typescript`, `rollup`, `jest`/`bun test`
-
-## Implementation Details
-
-- **Pipe**: Implemented as a reducer over an array of async functions.
-- **Error Context**: Errors are caught and decorated with `flowContext` to trace the path through the pipeline.
-- **No Classes**: The library uses a functional approach; no classes are exposed (previously had GraphRunner, now removed).
-
-## Naming Conventions
-- usage of `pipe` instead of `flow` to avoid confusion with the library name.
-- `fns` for function arrays.
-- `payload` for intermediate results.
-
-## Contributing
-- To add a new primitive, export it from `src/index.ts` and add tests.
-- Ensure strict type safety.
+- **Build**: `npm run build` (Runs Biome check + TypeScript check + Rollup).
+- **Test**: `npm test` (Runs Jest).
+- **Format/Lint**: `npm run check` (Runs Biome).
