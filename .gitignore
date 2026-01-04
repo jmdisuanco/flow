@@ -12,3 +12,6 @@ docs/
 # Aware
 .aware/
 !.aware/config.json
+
+# Deepmind
+GEMINI.md
