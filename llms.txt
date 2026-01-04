@@ -1,6 +1,6 @@
 # @jmdisuanco/flow
 
-A lightweight, functional approach to async pipelines with built-in Zod validation. **Fully TypeScript-native**.
+A lightweight, functional approach to async pipelines. **Fully TypeScript-native**.
 
 ## For LLM Developers
 
@@ -14,37 +14,27 @@ This document is optimized for AI assistants working with the `@jmdisuanco/flow`
 
 ### 1. `pipe(fns, validation?)`
 Sequential function composition. Executes functions in order, passing the output of one as input to the next.
-- **Signature**: `pipe<TInput, TOutput>(fns: AsyncFunction[], validation?: ValidationOptions): PipeFunction`
-- **Validation**: Supports input/output schemas via optional 2nd argument.
+- **Signature**: `pipe<TInput, TOutput>(fns: AsyncFunction[]): PipeFunction`
 
 ### 2. `parallel(fns, validation?)`
 Concurrent execution. Runs all functions in parallel with the same input. Returns an array of results.
-- **Signature**: `parallel<TInput, TOutput>(fns: AsyncFunction[], validation?: ValidationOptions): ParallelFunction`
-- **Validation**: Supports input/output schemas.
+- **Signature**: `parallel<TInput, TOutput>(fns: AsyncFunction[]): ParallelFunction`
 
 ### 3. `branch(condition, trueFn, falseFn, validation?)`
 Conditional execution. Evaluates `condition(input)`; if true, runs `trueFn(input)`, else `falseFn(input)`.
-- **Signature**: `branch<TInput, TOutput>(condition, trueFn, falseFn, validation?: ValidationOptions): BranchFunction`
-- **Validation**: Supports input/output schemas.
+- **Signature**: `branch<TInput, TOutput>(condition, trueFn, falseFn): BranchFunction`
 
 ### 4. `race(fns)`
 First-to-complete execution. Runs functions in parallel; returns the result of the first one to resolve.
 - **Signature**: `race<TInput, TOutput>(fns: AsyncFunction[]): RaceFunction`
-- **Note**: Does *not* accept a top-level validation argument. Wrap individual functions with `withSchema` if needed.
+- **Note**: Runs all functions in parallel.
 
 ### 5. `cycle(bodyFn, condition, maxIterations?)`
 Iterative execution (Loop). Runs `bodyFn(input)` repeatedly while `condition(currentResult)` is true.
 - **Signature**: `cycle<TInput>(bodyFn, condition, maxIterations?: number): CycleFunction`
-- **Note**: Does *not* accept a top-level validation argument. Use `withSchema` on `bodyFn`.
 
-## Validation System (`src/validation.ts`)
 
-Built on Zod.
-- **`ValidationOptions`**: `{ input?: ZodSchema, output?: ZodSchema, label?: string }`
-- **`validate`**: Helper object.
-  - `validate.input(schema, label?)`
-  - `validate.output(schema, label?)`
-- **`withSchema(fn, { input?, output? }, label?)`**: Higher-order function to add validation to ANY async function.
+
 
 ## Coding Patterns
 
@@ -72,19 +62,7 @@ pipe([
 
 ## Usage Examples
 
-### Pipe with Validation
-```typescript
-import { pipe, z } from '@jmdisuanco/flow';
 
-const pipeline = pipe([
-  async (x: number) => x * 2,
-  async (x: number) => x + 1
-], {
-  input: z.number(),
-  output: z.number(),
-  label: 'Calculation'
-});
-```
 
 ### Complex Flow
 ```typescript
@@ -108,7 +86,7 @@ const workflow = pipe([
 ## Project Structure
 
 - `src/index.ts`: Core primitives implementation.
-- `src/validation.ts`: Zod integration and error handling.
+
 - `src/__tests__/`: Unit and integration tests.
 - `lib/`: Generated build output (CJS, ESM, Types).
 - `examples/`: Usage demos.

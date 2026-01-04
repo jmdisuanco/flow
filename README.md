@@ -13,7 +13,6 @@ A lightweight, functional approach to Flow-Based Programming (FBP) focused on co
 - **Async-First** - Built for modern async workflows
 - **Composable** - Primitives can be nested and combined
 - **TypeScript Support** - Full TypeScript type definitions with generic type safety
-- **Zod Validation** - Built-in schema validation and error handling
 - **Error Handling** - Built-in timeout and error propagation
 
 ## 📋 Table of Contents
@@ -59,7 +58,7 @@ const result = await linearPipeline(5); // { result: 20, processed: true }
 
 ### TypeScript
 ```typescript
-import { pipe, z } from '@jmdisuanco/flow';
+import { pipe } from '@jmdisuanco/flow';
 
 // Typed named functions
 const double = (x: number) => x * 2;
@@ -70,13 +69,7 @@ const typedPipeline = pipe([
   double,
   addTen,
   formatResult
-], {
-  input: z.number().positive(),
-  output: z.object({
-    result: z.number(),
-    processed: z.boolean()
-  })
-});
+]);
 
 const result = await typedPipeline(5);
 ```
@@ -238,25 +231,7 @@ const smartProcessor = branch(
 
 
 
-### With Validation
-```javascript
-import { pipe, validate, z, ValidationError } from '@jmdisuanco/flow';
 
-const validatedPipe = pipe([
-  validate.input(z.number().positive(), 'input-validator'),
-  x => x * 2,
-  validate.output(z.number().min(0), 'output-validator')
-]);
-
-try {
-  await validatedPipe(5); // Works: 10
-  await validatedPipe(-1); // Throws ValidationError
-} catch (error) {
-  if (error instanceof ValidationError) {
-    console.log(error.format()); // Detailed error with context
-  }
-}
-```
 
 ## 🎯 Use Cases
 
@@ -347,13 +322,13 @@ const contentProcessor = branch(
 
 ### Core Functions
 
-#### `pipe<TInput, TOutput>(functions: Function[], validation?: ValidationOptions): PipeFunction<TInput, TOutput>`
+#### `pipe<TInput, TOutput>(functions: Function[]): PipeFunction<TInput, TOutput>`
 Creates a linear pipeline where output of each function becomes input of the next.
 
-#### `parallel<TInput, TOutput>(functions: Function[], validation?: ValidationOptions): ParallelFunction<TInput, TOutput>`  
+#### `parallel<TInput, TOutput>(functions: Function[]): ParallelFunction<TInput, TOutput>`  
 Executes all functions simultaneously with the same input.
 
-#### `branch<TInput, TOutput>(condition: Function, trueFn: Function, falseFn: Function, validation?: ValidationOptions): BranchFunction<TInput, TOutput>`
+#### `branch<TInput, TOutput>(condition: Function, trueFn: Function, falseFn: Function): BranchFunction<TInput, TOutput>`
 Conditionally executes one of two functions based on condition result.
 
 #### `race<TInput, TOutput>(functions: Function[]): RaceFunction<TInput, TOutput>`
@@ -362,16 +337,7 @@ Executes all functions simultaneously, returns result of first to complete.
 #### `cycle<TInput>(bodyFn: Function, condition: Function, maxIterations?: number): CycleFunction<TInput>`
 Repeatedly executes bodyFn while condition is true.
 
-### Validation Functions
 
-#### `validate.input<T>(schema: z.ZodSchema<T>, label?: string): ValidateFunction`
-Creates an input validator function.
-
-#### `validate.output<T>(schema: z.ZodSchema<T>, label?: string): ValidateFunction`
-Creates an output validator function.
-
-#### `withSchema<TInput, TOutput>(fn: Function, schemas: ValidationOptions, label?: string): Function`
-Wraps a function with input/output validation.
 
 
 
@@ -517,7 +483,6 @@ MIT License - see the [LICENSE](LICENSE) file for details.
 
 - Inspired by classical Flow-Based Programming concepts
 - Built for modern async/await JavaScript patterns  
-- Designed to complement React Flow visual programming interfaces
 
 ---
 
