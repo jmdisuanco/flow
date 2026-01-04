@@ -1,60 +1,76 @@
-const { pipe, parallel, z, validate, commonSchemas } = require('..');
+const { pipe, parallel } = require('..');
+
+// --- Basic Example Functions ---
+
+const logInput = (x) => {
+  console.log(`Input: ${x}`);
+  return x;
+};
+
+const double = (x) => x * 2;
+
+const addTen = (x) => x + 10;
+
+const logFinal = (x) => {
+  console.log(`Final: ${x}`);
+  return x;
+};
 
 async function basicExample() {
   console.log('=== Basic Flow Example ===');
 
   const pipeline = pipe([
-    validate.input(z.number().positive()),
-    (x) => x * 2,
-    (x) => x + 10,
-    validate.output(z.number()),
+    logInput,
+    double,
+    addTen,
+    logFinal,
   ]);
 
   const result = await pipeline(5);
   console.log('Result:', result); // 20
 }
 
-async function parallelExample() {
-  console.log('=== Parallel Example ===');
+// --- Parallel Example Functions ---
 
-  const parallelOps = parallel([(x) => x * 2, (x) => x + 100, (x) => x ** 2]);
+const processDouble = async (x) => {
+  console.log('Processing x * 2');
+  return x * 2;
+};
+
+const processAddHundred = async (x) => {
+  console.log('Processing x + 100');
+  return x + 100;
+};
+
+const processSquare = async (x) => {
+  console.log('Processing x ** 2');
+  return x ** 2;
+};
+
+async function parallelExample() {
+  console.log('\n=== Parallel Example ===');
+
+  const parallelOps = parallel([
+    processDouble,
+    processAddHundred,
+    processSquare,
+  ]);
 
   const results = await parallelOps(5);
   console.log('Results:', results); // [10, 105, 25]
 }
 
-async function validationExample() {
-  console.log('=== Validation Example ===');
-
-  const userPipe = pipe([
-    validate.input(z.object({ email: z.string().email(), age: z.number().min(18) })),
-    async (userData) => ({
-      id: Math.floor(Math.random() * 1000),
-      ...userData,
-      verified: false,
-    }),
-    validate.output(
-      commonSchemas.user.omit({ createdAt: true, updatedAt: true }).extend({
-        age: z.number(),
-        verified: z.boolean(),
-      })
-    ),
-  ]);
-
+async function runExamples() {
   try {
-    const result = await userPipe({ email: 'test@example.com', age: 25 });
-    console.log('User created:', result);
+    await basicExample();
+    await parallelExample();
   } catch (error) {
-    console.error('Validation failed:', error.format());
+    console.error('Example failed:', error);
   }
 }
 
-async function runExamples() {
-  await validationExample();
-}
-
 if (require.main === module) {
-  runExamples().catch(console.error);
+  runExamples();
 }
 
-module.exports = { basicExample, parallelExample, validationExample };
+module.exports = { basicExample, parallelExample };

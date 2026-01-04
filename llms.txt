@@ -39,24 +39,30 @@ Iterative execution (Loop). Runs `bodyFn(input)` repeatedly while `condition(cur
 ## Coding Patterns
 
 ### Preferred: Named Functions
-Use named functions instead of anonymous arrow functions in flow definitions. This improves stack trace readability and debugging, allowing you to identify exactly which function failed in a pipeline.
+Always use **named functions** instead of anonymous arrow functions in flow definitions. 
+
+**Why?**
+1.  **Readability**: Pipelines read like a story or a list of steps.
+2.  **Debugging**: Stack traces show the exact function name instead of `anonymous`.
+3.  **Editability**: Functions can be modified in isolation without touching the pipeline logic.
+4.  **Composability**: Defined functions can be reused across multiple pipelines.
 
 #### Bad
 ```typescript
 pipe([
   x => x * 2,
-  x => x + 1
+  async x => await save(x)
 ])
 ```
 
 #### Good
 ```typescript
 const double = (x: number) => x * 2;
-const increment = (x: number) => x + 1;
+const saveResult = async (x: number) => await save(x);
 
 pipe([
   double,
-  increment
+  saveResult
 ])
 ```
 
@@ -69,17 +75,41 @@ pipe([
 import { pipe, parallel, branch } from '@jmdisuanco/flow';
 
 const workflow = pipe([
-  // Step 1: Fetch data in parallel
-  parallel([
-    getUser,
-    getPosts
-  ]),
-  // Step 2: Branch based on user type
-  branch(
-    ([user]) => user.isAdmin,
-    adminHandler,
-    userHandler
-  )
+  parallel([getUser, getPosts]),
+  branch(isAdmin, adminHandler, userHandler)
+]);
+```
+
+### Looping (Cycle)
+```typescript
+// Retry logic
+const resilientTask = cycle(
+  attemptTask,
+  shouldRetry, // e.g., (result) => result.status === 'failed'
+  3 // max retries
+);
+```
+
+### Racing
+```typescript
+// Timeout pattern
+const taskWithTimeout = race([
+  longRunningTask,
+  timeoutHook(5000)
+]);
+```
+
+### Validation (Zod)
+Wrap validation logic in reusable helpers:
+
+```typescript
+import { z } from 'zod';
+const validate = (schema) => (data) => schema.parseAsync(data);
+
+const createUserPipe = pipe([
+  validate(UserSchema),
+  saveUser,
+  validate(ResponseSchema)
 ]);
 ```
 
@@ -89,10 +119,464 @@ const workflow = pipe([
 
 - `src/__tests__/`: Unit and integration tests.
 - `lib/`: Generated build output (CJS, ESM, Types).
-- `examples/`: Usage demos.
 
-## Development
+### Usage Demos
 
-- **Build**: `npm run build` (Runs Biome check + TypeScript check + Rollup).
-- **Test**: `npm test` (Runs Jest).
-- **Format/Lint**: `npm run check` (Runs Biome).
+Below are the full implementations of the usage demos.
+
+#### 1. Basic Usage (`pipe` & `parallel`)
+Demonstrates core sequential processing and concurrent execution.
+
+```javascript
+const { pipe, parallel } = require('..');
+
+// --- Basic Example Functions ---
+
+const logInput = (x) => {
+  console.log(`Input: ${x}`);
+  return x;
+};
+
+const double = (x) => x * 2;
+
+const addTen = (x) => x + 10;
+
+const logFinal = (x) => {
+  console.log(`Final: ${x}`);
+  return x;
+};
+
+async function basicExample() {
+  console.log('=== Basic Flow Example ===');
+
+  const pipeline = pipe([
+    logInput,
+    double,
+    addTen,
+    logFinal,
+  ]);
+
+  const result = await pipeline(5);
+  console.log('Result:', result); // 20
+}
+
+// --- Parallel Example Functions ---
+
+const processDouble = async (x) => {
+  console.log('Processing x * 2');
+  return x * 2;
+};
+
+const processAddHundred = async (x) => {
+  console.log('Processing x + 100');
+  return x + 100;
+};
+
+const processSquare = async (x) => {
+  console.log('Processing x ** 2');
+  return x ** 2;
+};
+
+async function parallelExample() {
+  console.log('\n=== Parallel Example ===');
+
+  const parallelOps = parallel([
+    processDouble,
+    processAddHundred,
+    processSquare,
+  ]);
+
+  const results = await parallelOps(5);
+  console.log('Results:', results); // [10, 105, 25]
+}
+
+async function runExamples() {
+  try {
+    await basicExample();
+    await parallelExample();
+  } catch (error) {
+    console.error('Example failed:', error);
+  }
+}
+
+if (require.main === module) {
+  runExamples();
+}
+
+module.exports = { basicExample, parallelExample };
+```
+
+**Output:**
+```text
+=== Basic Flow Example ===
+Input: 5
+Final: 20
+Result: 20
+
+=== Parallel Example ===
+Processing x * 2
+Processing x + 100
+Processing x ** 2
+Results: [ 10, 105, 25 ]
+```
+
+#### 2. Conditional Logic (`branch`)
+Demonstrates how to route execution based on dynamic conditions.
+
+```javascript
+const { branch, pipe } = require('..');
+
+const isGreaterThanTen = (x) => x > 10;
+
+const handleHigh = async (x) => {
+    console.log(`${x} is greater than 10`);
+    return 'High';
+};
+
+const handleLow = async (x) => {
+    console.log(`${x} is less than or equal to 10`);
+    return 'Low';
+};
+
+const formatResult = (result) => `Result category: ${result} `;
+
+// Optional: Identity function for initial logging or pass-through
+const logStart = (x) => x;
+
+async function branchingExample() {
+    console.log('=== Branching Example ===');
+
+    // Define the branching logic separately for clarity
+    const checkValue = branch(
+        isGreaterThanTen,
+        handleHigh,
+        handleLow
+    );
+
+    const pipeline = pipe([
+        logStart,
+        checkValue,
+        formatResult
+    ]);
+
+    console.log(await pipeline(5));   // Low
+    console.log(await pipeline(15));  // High
+}
+
+if (require.main === module) {
+    branchingExample().catch(console.error);
+}
+
+module.exports = { branchingExample };
+```
+
+**Output:**
+```text
+=== Branching Example ===
+5 is less than or equal to 10
+Result category: Low 
+15 is greater than 10
+Result category: High 
+```
+
+#### 3. Iteration (`cycle`)
+Demonstrates looping logic using the `cycle` primitive.
+
+```javascript
+const { cycle, pipe } = require('..');
+
+const incrementCounter = async (x) => {
+    console.log(`Counter: ${x}`);
+    return x + 1;
+};
+
+const isLessThanFive = (x) => x < 5;
+
+const logStart = (start) => {
+    console.log(`Starting loop at ${start}`);
+    return start;
+};
+
+const logFinish = (final) => `Loop finished at ${final}`;
+
+async function loopingExample() {
+    console.log('=== Looping Example ===');
+
+    const countUp = cycle(
+        incrementCounter,
+        isLessThanFive,
+        10 // Max iterations safety
+    );
+
+    const pipeline = pipe([
+        logStart,
+        countUp,
+        logFinish
+    ]);
+
+    const result = await pipeline(0);
+    console.log(result);
+}
+
+if (require.main === module) {
+    loopingExample().catch(console.error);
+}
+
+module.exports = { loopingExample };
+```
+
+**Output:**
+```text
+=== Looping Example ===
+Starting loop at 0
+Counter: 0
+Counter: 1
+Counter: 2
+Counter: 3
+Counter: 4
+Loop finished at 5
+```
+
+#### 4. Racing (`race`)
+Demonstrates handling multiple async tasks and taking the first result.
+
+```javascript
+const { race, pipe } = require('..');
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const fastTask = async () => {
+    await delay(100);
+    return 'Fast Task Finished';
+};
+
+const slowTask = async () => {
+    await delay(500);
+    return 'Slow Task Finished';
+};
+
+async function racingExample() {
+    console.log('=== Racing Example ===');
+
+    const raceOps = race([slowTask, fastTask]);
+
+    console.log('Starting race...');
+    const winner = await raceOps();
+    console.log('Winner:', winner); // Fast Task Finished
+}
+
+if (require.main === module) {
+    racingExample().catch(console.error);
+}
+
+module.exports = { racingExample };
+```
+
+**Output:**
+```text
+=== Racing Example ===
+Starting race...
+Winner: Fast Task Finished
+```
+
+#### 5. Error Handling
+Demonstrates how errors propagate through the pipeline and standard try/catch handling.
+
+```javascript
+const { pipe } = require('..');
+
+const processStep1 = (x) => {
+    console.log(`Step 1: processing ${x}`);
+    return x;
+};
+
+const checkNegative = (x) => {
+    if (x < 0) {
+        throw new Error('Negative values not allowed!');
+    }
+    return x * 2;
+};
+
+const processStep3 = (x) => {
+    console.log(`Step 3: success with ${x}`);
+    return x;
+};
+
+async function errorHandlingExample() {
+    console.log('=== Error Handling Example ===');
+
+    const riskyPipeline = pipe([
+        processStep1,
+        checkNegative,
+        processStep3
+    ]);
+
+    console.log('Test 1: Success case');
+    try {
+        const result = await riskyPipeline(10);
+        console.log('Result:', result);
+    } catch (err) {
+        console.error('Caught error:', err.message);
+    }
+
+    console.log('\nTest 2: Failure case');
+    try {
+        await riskyPipeline(-5);
+    } catch (err) {
+        console.error('Caught error:', err.message);
+    }
+}
+
+if (require.main === module) {
+    errorHandlingExample().catch(console.error);
+}
+
+module.exports = { errorHandlingExample };
+```
+
+**Output:**
+```text
+=== Error Handling Example ===
+Test 1: Success case
+Step 1: processing 10
+Step 3: success with 20
+Result: 20
+
+Test 2: Failure case
+Step 1: processing -5
+Caught error: Negative values not allowed!
+```
+
+#### 6. Schema Validation (with Zod)
+Demonstrates integrating external validation libraries like Zod using named wrapper functions for cleanliness.
+
+```javascript
+const { pipe } = require('@jmdisuanco/flow');
+const { z } = require('zod');
+
+// --- Schemas ---
+
+const UserInputSchema = z.object({
+    name: z.string().min(2),
+    email: z.string().email(),
+    age: z.number().min(18)
+});
+
+const UserOutputSchema = z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+    email: z.string(),
+    isActive: z.boolean()
+});
+
+// --- Helper Factory ---
+
+const validate = (schema) => async (data) => {
+    return schema.parseAsync(data);
+};
+
+// --- Pipeline Steps ---
+
+const validateInput = validate(UserInputSchema);
+
+const enrichUserData = async (data) => {
+    console.log(`Enriching data for ${data.name}...`);
+    // Simulate DB processing or external API call
+    return {
+        ...data,
+        id: '123e4567-e89b-12d3-a456-426614174000', // Mock UUID
+        isActive: true,
+        processedAt: new Date()
+    };
+};
+
+const validateOutput = validate(UserOutputSchema);
+
+const formatResponse = (data) => {
+    console.log('Formatting response...');
+    return {
+        status: 201,
+        body: data
+    };
+};
+
+// --- Main Example ---
+
+async function zodExample() {
+    console.log('=== Zod Integration Example ===');
+
+    const createUserPipeline = pipe([
+        validateInput,
+        enrichUserData,
+        validateOutput,
+        formatResponse
+    ]);
+
+    console.log('\nTest 1: Valid Input');
+    try {
+        const input = {
+            name: 'Alice',
+            email: 'alice@example.com',
+            age: 25
+        };
+        const result = await createUserPipeline(input);
+        console.log('Result:', result);
+    } catch (error) {
+        console.error('Pipeline failed:', error);
+    }
+
+    console.log('\nTest 2: Invalid Input');
+    try {
+        const invalidInput = {
+            name: 'B', // Too short
+            email: 'not-an-email',
+            age: 12 // Too young
+        };
+        await createUserPipeline(invalidInput);
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            console.error('Validation Error:', error.issues);
+        } else {
+            console.error('Unknown Error:', error);
+        }
+    }
+}
+
+if (require.main === module) {
+    zodExample();
+}
+
+module.exports = { zodExample };
+```
+
+**Output:**
+```text
+=== Zod Integration Example ===
+
+Test 1: Valid Input
+Enriching data for Alice...
+Formatting response...
+Result: {
+  status: 201,
+  body: {
+    id: '123e4567-e89b-12d3-a456-426614174000',
+    name: 'Alice',
+    email: 'alice@example.com',
+    isActive: true
+  }
+}
+
+Test 2: Invalid Input
+Validation Error: [
+  {
+    code: 'too_small',
+    minimum: 2,
+    type: 'string',
+    inclusive: true,
+    exact: false,
+    message: 'String must contain at least 2 character(s)',
+    path: [ 'name' ]
+  },
+  ...
+]
+```
