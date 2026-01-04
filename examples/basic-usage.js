@@ -19,12 +19,7 @@ const logFinal = (x) => {
 async function basicExample() {
   console.log('=== Basic Flow Example ===');
 
-  const pipeline = pipe([
-    logInput,
-    double,
-    addTen,
-    logFinal,
-  ]);
+  const pipeline = pipe([logInput, double, addTen, logFinal]);
 
   const result = await pipeline(5);
   console.log('Result:', result); // 20
@@ -50,11 +45,7 @@ const processSquare = async (x) => {
 async function parallelExample() {
   console.log('\n=== Parallel Example ===');
 
-  const parallelOps = parallel([
-    processDouble,
-    processAddHundred,
-    processSquare,
-  ]);
+  const parallelOps = parallel([processDouble, processAddHundred, processSquare]);
 
   const results = await parallelOps(5);
   console.log('Results:', results); // [10, 105, 25]
